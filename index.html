@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy New Year - Pháo Hoa</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #000, #001122);
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        h1 {
+            font-size: 3em;
+            text-align: center;
+            margin: 0;
+            z-index: 10;
+        }
+        p {
+            font-size: 1.5em;
+            text-align: center;
+            color: #ffd700; /* Màu vàng để nổi bật */
+            margin: 20px 0 0 0;
+            z-index: 10;
+        }
+        .image-gallery {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Không chặn click */
+        }
+        .image-gallery img {
+            position: absolute;
+            width: 150px; /* Kích thước ảnh, có thể điều chỉnh */
+            height: auto;
+            border-radius: 10px; /* Bo góc nhẹ */
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); /* Hiệu ứng bóng vàng */
+            opacity: 0.8; /* Mờ nhẹ để hòa quyện */
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chúc Mừng Năm Mới 2026!</h1>
+    <p>Chúc bạn năm mới vui vẻ, hạnh phúc, dáng ngon, gặp nhiều may mắn!</p>
+    <div class="image-gallery">
+        <img id="img1" src="z7361959662688_be252e7c32f9591aaf9bcd55c8d3608b.jpg" alt="Ảnh 1">
+        <img id="img2" src="z7361959676194_b9d05454f148abea57b8f1fc3a5f84c4.jpg" alt="Ảnh 2">
+        <img id="img3" src="z7361959678453_3073a57cf7c68e9b8e9246ab51d38ea9.jpg" alt="Ảnh 3">
+        <img id="img4" src="z7361959686077_2691cff8c5d572711923dc8c871187a6.jpg" alt="Ảnh 4">
+        <img id="img5" src="z7361959687585_681ef2d85ea55f087071ebeb485c6d28.jpg" alt="Ảnh 5">
+    </div>
+    <canvas id="fireworks"></canvas>
+
+    <!-- Âm thanh nổ (tải từ web miễn phí, bạn có thể thay bằng file local) -->
+    <audio id="explosionSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" preload="auto"></audio>
+
+    <script>
+        const canvas = document.getElementById('fireworks');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let rockets = [];
+        let particles = [];
+        const gravity = 0.1; // Trọng lực cho particles
+
+        // Đối tượng cho ảnh di chuyển
+        const images = [
+            { el: document.getElementById('img1'), x: 100, y: 100, vx: 2, vy: 1.5, rotation: 0, rotationSpeed: 0.02 },
+            { el: document.getElementById('img2'), x: 300, y: 200, vx: -1.5, vy: 2, rotation: 0, rotationSpeed: -0.015 },
+            { el: document.getElementById('img3'), x: 500, y: 150, vx: 1, vy: -2, rotation: 0, rotationSpeed: 0.025 },
+            { el: document.getElementById('img4'), x: 200, y: 300, vx: -2, vy: 1, rotation: 0, rotationSpeed: -0.02 },
+            { el: document.getElementById('img5'), x: 400, y: 250, vx: 1.5, vy: -1.5, rotation: 0, rotationSpeed: 0.018 }
+        ];
+
+        class Rocket {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = { x: 0, y: -Math.random() * 5 - 2 }; // Bay lên
+                this.explodeHeight = Math.random() * canvas.height / 2 + 50;
+                this.trail = []; // Lưu trail
+            }
+
+            update() {
+                // Thêm vị trí hiện tại vào trail
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 10) this.trail.shift(); // Giữ trail ngắn
+
+                this.y += this.velocity.y;
+                if (this.y <= this.explodeHeight) {
+                    this.explode();
+                    return true; // Xóa rocket sau khi nổ
+                }
+                return false;
+            }
+
+            draw() {
+                // Vẽ trail
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i < this.trail.length - 1; i++) {
+                    ctx.moveTo(this.trail[i].x, this.trail[i].y);
+                    ctx.lineTo(this.trail[i + 1].x, this.trail[i + 1].y);
+                }
+                ctx.stroke();
+
+                // Vẽ rocket
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            explode() {
+                const explosionSound = document.getElementById('explosionSound');
+                explosionSound.currentTime = 0; // Reset âm thanh
+                explosionSound.play(); // Phát âm thanh nổ
+
+                const colors = ['#ff0040', '#ff4080', '#40ff80', '#80ff40', '#4080ff', '#ff8040'];
+                for (let i = 0; i < 100; i++) { // Tăng số hạt nổ
+                    particles.push(new Particle(this.x, this.y, colors[Math.floor(Math.random() * colors.length)]));
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = {
+                    x: (Math.random() - 0.5) * 15, // Tăng tốc độ bay ra
+                    y: (Math.random() - 0.5) * 15
+                };
+                this.alpha = 1;
+                this.size = Math.random() * 5 + 2;
+            }
+
+            update() {
+                this.velocity.y += gravity; // Áp dụng trọng lực
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.005; // Tan chậm hơn
+                this.size *= 0.995;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Cập nhật và vẽ rockets
+            rockets.forEach((rocket, index) => {
+                rocket.update();
+                rocket.draw();
+                if (rocket.update()) { // Nếu nổ, xóa rocket
+                    rockets.splice(index, 1);
+                }
+            });
+
+            // Cập nhật và vẽ particles
+            particles.forEach((particle, index) => {
+                particle.update();
+                particle.draw();
+                if (particle.alpha <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+
+            // Cập nhật chuyển động và quay cho ảnh
+            images.forEach(img => {
+                img.x += img.vx;
+                img.y += img.vy;
+                img.rotation += img.rotationSpeed;
+
+                // Bounce khi chạm biên
+                if (img.x <= 0 || img.x >= canvas.width - 150) img.vx *= -1;
+                if (img.y <= 0 || img.y >= canvas.height - 100) img.vy *= -1;
+
+                // Áp dụng transform
+                img.el.style.transform = `translate(${img.x}px, ${img.y}px) rotate(${img.rotation}rad)`;
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Tự động tạo rocket từ dưới màn hình
+        setInterval(() => {
+            const x = Math.random() * canvas.width;
+            const y = canvas.height;
+            const colors = ['#ff0040', '#ff4080', '#40ff80', '#80ff40', '#4080ff', '#ff8040'];
+            rockets.push(new Rocket(x, y, colors[Math.floor(Math.random() * colors.length)]));
+        }, 1500); // Tạo rocket mỗi 1.5 giây
+
+        animate();
+
+        // Điều chỉnh kích thước canvas khi resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
